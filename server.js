@@ -5,6 +5,9 @@ const bodyParser = require('body-parser');
 const Product = require('./models/Product');
 const initialProducts = require('./Productdata');
 const cors = require('cors');
+const multer = require('multer');
+const csv = require('csv-parse');
+const upload = multer();
 const app = express();
 
 app.use(cors());
@@ -37,6 +40,38 @@ app.post('/api/products', authorize, async (req, res) => {
   } catch (err) {
     res.status(400).json({ message: 'Error creating product', error: err.message });
   }
+});
+
+// CSV upload route
+app.post('/api/products/upload', authorize, upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded.' });
+  }
+  const results = [];
+  const parser = csv.parse({ columns: true, trim: true });
+  parser.on('readable', () => {
+    let record;
+    while ((record = parser.read())) {
+      results.push(record);
+    }
+  });
+  parser.on('error', err => {
+    return res.status(400).json({ message: 'CSV parse error', error: err.message });
+  });
+  parser.on('end', async () => {
+    try {
+      // Validate and insert products
+      const validProducts = results.filter(p =>
+        p.name && p.price && p.stock !== undefined && p.category
+      );
+      const inserted = await Product.insertMany(validProducts);
+      res.status(201).json({ message: 'Products uploaded', count: inserted.length });
+    } catch (err) {
+      res.status(500).json({ message: 'Error saving products', error: err.message });
+    }
+  });
+  parser.write(req.file.buffer);
+  parser.end();
 });
 
 app.get('/api/products', async (req, res) => {
