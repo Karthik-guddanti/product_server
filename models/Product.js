@@ -1,4 +1,3 @@
-// models/Product.js
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
@@ -22,7 +21,7 @@ const productSchema = new mongoose.Schema({
         required: true,
         trim: true
     }
-}, { timestamps: true });
+}, { timestamps: true }); // Automatically adds createdAt and updatedAt fields
 
 const Product = mongoose.model('Product', productSchema);
 
